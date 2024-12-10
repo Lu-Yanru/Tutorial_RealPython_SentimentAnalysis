@@ -3,9 +3,9 @@
 """
 Created on Mon Nov 25 20:59:11 2024
 
-@author: luzi
+@author: Yanru Lu
 """
-# Sentiment analysis tutorial Real Python with Keras TensorFlow
+# Sentiment analysis tutorial Real Python with Keras
 # https://realpython.com/python-keras-text-classification/
 
 import pandas as pd # for reading csv files and making list of data frame
@@ -13,14 +13,19 @@ from sklearn.feature_extraction.text import CountVectorizer # for making bag of 
 from sklearn.model_selection import train_test_split # for spliting data into training and testing data
 from sklearn.linear_model import LogisticRegression # for building baseline model with logistic regression
 
+from keras.models import Sequential # for using Keras sequential model API
+from keras import layers # for adding layers in Keras
+
 # Load data set with Pandas
 # data: sentences + sentiment label (1 positive, 0 negative)
 
+
 # set up a dictionary of source and filepath with key:value pairs 
+path = '~/Desktop/DataAnalysis/NLP/Tutorial_RealPython_SentimentAnalysis/data/'
 filepath_dict = {
-    'yelp': '~/Desktop/NLP/SentimentAnalysis-RealPython/data/yelp_labelled.txt',
-    'amazon': '~/Desktop/NLP/SentimentAnalysis-RealPython/data/amazon_cells_labelled.txt',
-    'imdb': '~/Desktop/NLP/SentimentAnalysis-RealPython/data/imdb_labelled.txt'
+    'yelp': path+'yelp_labelled.txt',
+    'amazon': path+'amazon_cells_labelled.txt',
+    'imdb': path+'imdb_labelled.txt'
     }
 # set up an empty list of data frame
 df_list = []
@@ -114,3 +119,34 @@ for source in df['source'].unique():
 
 
 # a neural network model
+
+# o = f(sum(wa)+b)
+# a: input nodes
+# w: weight
+# b: bias
+# o: output nodes
+# f: activation funtion
+# "It is generally common to use 
+# a rectified linear unit (ReLU) for hidden layers, 
+# a sigmoid function for the output layer in a binary classification problem, 
+# or a softmax function for the output layer of multi-class classification problems."
+
+# calculate weight -> backpropagation
+# use optimizer to reduce error determined by a loss function
+# optimizer: most commonly Adam
+# loss function: here  binary cross entropy used for binary classification problems
+
+# build a keras model
+input_dim = X_train.shape[1] # Number of features
+
+model = Sequential()
+# using tensorflow backend
+# add a dense layer (hidden layer) to the model,
+# which has 10 neurons, 
+# num of features equal to the length of X_train, 
+# and relu as the activation funtion
+model.add(layers.Dense(10, input_dim=input_dim, activation='relu'))
+# add another dense layer (output layer) to the model,
+# which has 1 neuron
+# and sigmoid as the activation funtion
+model.add(layers.Dense(1, activation='sigmoid'))
