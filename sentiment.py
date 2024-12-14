@@ -15,6 +15,12 @@ from sklearn.linear_model import LogisticRegression # for building baseline mode
 
 from keras.models import Sequential # for using Keras sequential model API
 from keras import layers # for adding layers in Keras
+#from keras.backend import clear_session # for removing trained weights before retraining model
+
+import matplotlib.pyplot as plt # for visualizing loss and accuracy for training and testing data
+
+from sklearn.preprocessing import LabelEncoder # encode words into categorical interger values
+from sklearn.preprocessing import OneHotEncoder # encode categorical values into one-hot encoded numeric array
 
 # Load data set with Pandas
 # data: sentences + sentiment label (1 positive, 0 negative)
@@ -93,6 +99,7 @@ classifier = LogisticRegression()
 classifier.fit(X_train, y_train)
 score = classifier.score(X_test, y_test)
 print("Accuracy:", score)
+# Accuracy: 0.776
 
 # try on all datasets
 # loop through the datasets based on their sources
@@ -115,7 +122,11 @@ for source in df['source'].unique():
     # {} to insert the 1st variable (source)
     # {:.4f} to insert the 2nd variable (score) until the 4th decimal 
     print("Accuracy for {} data: {:.4f}".format(source, score))
-    
+# Accuracy for yelp data: 0.7760
+# Accuracy for amazon data: 0.7920
+# Accuracy for imdb data: 0.7326
+
+
 
 
 # a neural network model
@@ -136,8 +147,9 @@ for source in df['source'].unique():
 # optimizer: most commonly Adam
 # loss function: here  binary cross entropy used for binary classification problems
 
-# build a keras model
-input_dim = X_train.shape[1] # Number of features
+# build a keras sequential model
+# a linear stack of layers
+input_dim = X_train.shape[1] # Number of features 2720
 
 model = Sequential()
 # using tensorflow backend
@@ -150,3 +162,119 @@ model.add(layers.Dense(10, input_dim=input_dim, activation='relu'))
 # which has 1 neuron
 # and sigmoid as the activation funtion
 model.add(layers.Dense(1, activation='sigmoid'))
+
+# compile the model which
+# specifies the loss function as binary cross entropy and
+# specifies the optimizer as adam
+# add a list of metrics that can be later used for evaluation (do not influence training)
+model.compile(loss='binary_crossentropy',
+              optimizer='adam',
+              metrics=['accuracy']
+    )
+# prinnt an overview of the model and the number of parameters available for training
+model.summary()
+# hidden layer: 2720 features * 10 nodes = 27200 weights + 10 biases = 27210 parameters
+# output layer: 10 nodes as input -> 10 weights + 1 bias = 11 parameters
+
+# model training
+# epochs specifies the number of iterations
+# batch size specifies how many samples are used in one forward/backward pass
+# -> increases the speed of the computation: needs fewer epochs, but more memory
+# -> model may degrade with larger batch size
+# verbose sets whether the training process is shown: 0 = silent, 1 = progess bar, 2 = one line per epoch
+history = model.fit(X_train, y_train,
+                    epochs=100,
+                    verbose=False,
+                    validation_data=(X_test, y_test),
+                    batch_size=10
+                    )
+# if rerun the training (.fit funtion),
+# need to clear session to remove the already computed weights from the previous training
+# clear_session()
+
+# measure accuracy of the model
+loss, accuracy = model.evaluate(X_train, y_train, verbose=False)
+print("Training accuracy: {:.4f}".format(accuracy))
+# Training accuracy: 1.0000 overfitted due to many epochs
+loss, accuracy = model.evaluate(X_test, y_test, verbose=False)
+print("Testing accuracy: {:.4f}".format(accuracy))
+# Testing accuracy: 0.7754 higher than logistic regression model
+
+# visualize loss and accuracy for training and testing data based on the history callback
+# the callback records the loss and additional metrics that can be added in the .fit() method
+plt.style.use('ggplot')
+# define a helper funtion
+def plot_history(history):
+    acc = history.history['accuracy']
+    val_acc = history.history['val_accuracy']
+    loss = history.history['loss']
+    val_loss = history.history['val_loss']
+    x = range(1, len(acc) +1)
+    
+    plt.figure(figsize = (12,5))
+    plt.subplot(1,2,1)
+    plt.plot(x, acc, 'b', label='Training acc')
+    plt.plot(x, val_acc, 'r', label='Validation acc')
+    plt.title('Training and validation accuracy')
+    plt.legend()
+    plt.subplot(1,2,2)
+    plt.plot(x, loss, 'b', label='Training loss')
+    plt.plot(x, val_loss, 'r', label='Validation loss')
+    plt.title('Training and validation loss')
+    plt.legend()
+    
+plot_history(history)
+# sign of overfitting: accuracy reached 100%, the loss of the validation starts rising again
+# usu separate testing and validation sets
+# take the model with the highest balidation accuracy and then test the model with the testing set.
+
+
+
+# represent words as dense vectors
+
+# one-hot encoding
+# take a vactor of the length of the vocabulary with an entry for each word in the corpus
+# for each word a vector with zeros everywhere except for the spot for the word in the vocabulary, which is set to 1
+# vector can be large for each word
+# does not give any additional info like the relationship btw words
+# usu used for categories/categorical features 
+# which you cannot represent as a numeric value but still want to use it in ML
+cities = ['London', 'Berlin', 'Berlin', 'New York', 'London']
+# encode the list of cities into categorical interger values with LabelEncoder from scikit-learn
+encoder = LabelEncoder()
+city_labels = encoder.fit_transform(cities)
+city_labels
+# array([1, 0, 0, 2, 1])
+
+# use OneHotEncoder from scikit-learn to encode the categorical values into a one-hot encoded numeric array
+encoder = OneHotEncoder()
+# reshape array above so that each categorical values to be in a separate row
+# because that's what OneHotEncoder expects
+city_labels = city_labels.reshape((5,1))
+city_labels
+#array([[1],
+#       [0],
+#       [0],
+#       [2],
+#       [1]])
+city_arrays = encoder.fit_transform(city_labels)
+# show the transformed result as an array
+city_arrays.toarray()
+#array([[0., 1., 0.],
+#       [1., 0., 0.],
+#       [1., 0., 0.],
+#       [0., 0., 1.],
+#       [0., 1., 0.]])
+
+
+
+# word embeddings/dense word vectors
+# map the statistical structure of the language used in the corpus
+# aim to map semantic meaning into a geometric space: embedding space
+# map semantically similar words close on the embedding space
+# vector arithmetic: king-man+woman=queen
+# how to obtain?
+# option1: train word embedding during the training of the neural network
+# option2: use pretrained word embeddings, can train them further
+
+# prepare the text
