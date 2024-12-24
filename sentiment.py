@@ -22,6 +22,10 @@ import matplotlib.pyplot as plt # for visualizing loss and accuracy for training
 from sklearn.preprocessing import LabelEncoder # encode words into categorical interger values
 from sklearn.preprocessing import OneHotEncoder # encode categorical values into one-hot encoded numeric array
 
+from keras.layers import TextVectorization # tokenize the text into a format that can be used by the word embeddings
+
+import numpy as np # for creating embedding matrix that only contain words in our vocab
+
 # Load data set with Pandas
 # data: sentences + sentiment label (1 positive, 0 negative)
 
@@ -278,3 +282,196 @@ city_arrays.toarray()
 # option2: use pretrained word embeddings, can train them further
 
 # prepare the text
+# vectorize text into a list of intergers
+# each interger maps to a value in a dictionary that encodes the entire corpus
+# keys in the dictionary are the vocabulary terms
+max_tokens = 5000 # max vocab size
+max_len = 100 # Sequence length to pad the outputs to, adds 4 zero indexes reserved for unknown words
+# create the vectorizer
+tokenizer = TextVectorization(
+    max_tokens=max_tokens,
+    standardize="lower_and_strip_punctuation", # lowercase text and strips punctuation
+    split="whitespace", # splite on whitespace
+    output_mode='int', # outputs interger indices
+    output_sequence_length=max_len)
+# create the vocab
+tokenizer.adapt(sentences_train)
+# vectorize sentences_train and sentences_test
+X_train = tokenizer(sentences_train)
+X_test = tokenizer(sentences_test)
+print(sentences_train[2])
+print(X_train[2])
+# index ordered after the most common words in the text
+# 0 index reserved for padding
+# unknown words are indexed word_count+1
+input_data = ["black white foo", "clever the dee"]
+tokenizer(input_data)
+# diff btw TextVectorization in keras and CountVectorization in scikitlearn:
+# CountVectorizer stack vectors of word count, length of each vector is the size of the total corpus vocab
+# With TextVectorization, the resulting vectors equal the length of each text, the numbers correspond to the values from the dict
+embedding_dim = 50
+voc = tokenizer.get_vocabulary() # the vocab
+vocab_size = len(voc) +1 # length of the vocab, +1 for 0 index reserved for unknown words
+# get a dict mapping words to their indices
+word_index = dict(zip(voc, range(vocab_size)))
+
+# keras embedding layer
+# take the previously calculated intergers and maps them to a dense vector of embedding
+# option 1: take the output of the embedding layer and plug it into a Dense layer
+model = Sequential()
+model.add(layers.Embedding(
+    input_dim=vocab_size, # the size of the vocab
+    output_dim=embedding_dim, # the size of the dense vector
+    input_length=max_len # the length of the sequence
+    ))
+# add a flatten layer that prepared the sequential input for the dense layer
+model.add(layers.Flatten())
+model.add(layers.Dense(10, activation='relu'))
+model.add(layers.Dense(1, activation='sigmoid'))
+model.compile(
+    optimizer='adam',
+    loss='binary_crossentropy',
+    metrics=['accuracy']
+    )
+# Build the model explicitly with the input shape
+# for embedding, input_shape = (batch_size, sequence_length),
+# none indicates any batch size
+# sequence_length should match the expected input length for your sequences, i.e. the number of tokens in each sequence
+model.build(input_shape=(None, max_len))
+model.summary()
+# fit and evaluate model
+history = model.fit(X_train, y_train,
+                    epochs=20,
+                    verbose=False,
+                    validation_data=(X_test, y_test),
+                    batch_size=10)
+loss, accuracy = model.evaluate(X_train, y_train, verbose=False)
+print("Training Accuracy: {:.4f}".format(accuracy))
+loss, accuracy = model.evaluate(X_test, y_test, verbose=False)
+print("Training Accuracy {:.4f}".format(accuracy))
+plot_history(history)
+# not a good way to work with sequential data
+# for sequential data, focus on methods that look at local and sequential info instead of absolute positional info
+
+# option 2:  using a MaxPooling1D/AveragePooling1D or a GlobalMaxPooling1D/GlobalAveragePooling1D layer after the embedding
+# pooling layers are a way to reduce the size of (downsample) the incoming feature
+# max pooling: take the max value of all features in the (size defined) pool for each feature dimension (more commonly used as it highlights large values)
+# average pooling: take average
+# global max/average pooling:  takes the max/avg of all features
+model = Sequential()
+model.add(layers.Embedding(input_dim=vocab_size, 
+                           output_dim=embedding_dim, 
+                           input_length=max_len))
+model.add(layers.GlobalMaxPool1D())
+model.add(layers.Dense(10, activation='relu'))
+model.add(layers.Dense(1, activation='sigmoid'))
+model.compile(optimizer='adam',
+              loss='binary_crossentropy',
+              metrics=['accuracy'])
+model.build(input_shape=(None, max_len))
+model.summary()
+# train and evaluate model
+history = model.fit(X_train, y_train,
+                    epochs=50,
+                    verbose=False,
+                    validation_data=(X_test, y_test),
+                    batch_size=10)
+loss, accuracy = model.evaluate(X_train, y_train, verbose=False)
+print("Training Accuracy: {:.4f}".format(accuracy))
+loss, accuracy = model.evaluate(X_test, y_test, verbose=False)
+print("Testing Accuracy:  {:.4f}".format(accuracy))
+plot_history(history)
+# improves the model
+
+# use pretrained word embeddings
+# precomputed embeddings trained on a large corpus
+# Word2Vec (Google):  neural networks, more accurate
+# GloVe (Stanford NLP): co-occurrence mateix and matrix factorization, faster
+# both have dimensionality reduction
+# here: GloVe, each line represents a word followed by its vector as a stream of floats
+
+# make a function to create embedding matrix that only contain the words in our vocab
+def create_embedding_matrix(filepath, word_index, embedding_dim):
+    vocab_size = len(word_index) + 1 # Add 1 because reserve 0 index
+    embedding_matrix = np.zeros((vocab_size, embedding_dim))
+    
+    with open(filepath) as f:
+        for line in f:
+            word, *vector = line.split()
+            if word in word_index:
+                idx = word_index[word]
+                embedding_matrix[idx] = np.array(
+                    vector, dtype=np.float32)[:embedding_dim]
+                
+    return embedding_matrix
+# retrieve the embedding matrix
+embedding_matrix = create_embedding_matrix(
+    'data/glove.6B/glove.6B.50d.txt',
+    word_index, embedding_dim)
+# calculate how many embeddings are non-zero
+nonzero_elements = np.count_nonzero(np.count_nonzero(embedding_matrix, axis=1))
+nonzero_elements/vocab_size
+# 0.9507313317936874
+
+# build a model with a global max pooling layer
+model = Sequential()
+model.add(layers.Embedding(vocab_size,
+                           embedding_dim,
+                           weights=[embedding_matrix],
+                           input_length=max_len,
+                           trainable=False))
+model.add(layers.GlobalMaxPool1D())
+model.add(layers.Dense(10, activation='relu'))
+model.add(layers.Dense(1, activation='sigmoid'))
+model.compile(optimizer='adam',
+             loss='binary_crossentropy',
+             metrics=['accuracy'])
+model.build(input_shape=(None, max_len))
+model.summary()
+# model fit and evaluation
+history = model.fit(X_train, y_train,
+                    epochs=50,
+                    verbose=False,
+                    validation_data=(X_test, y_test),
+                    batch_size=10)
+loss, accuracy = model.evaluate(X_train, y_train, verbose=False)
+print("Training Accuracy: {:.4f}".format(accuracy))
+# Training Accuracy: 0.5276
+loss, accuracy = model.evaluate(X_test, y_test, verbose=False)
+print("Testing Accuracy:  {:.4f}".format(accuracy))
+#Testing Accuracy:  0.4920
+plot_history(history)
+
+# if we allow the embedding to be trained additionally
+model = Sequential()
+model.add(layers.Embedding(vocab_size,
+                           embedding_dim,
+                           weights=[embedding_matrix],
+                           input_length=max_len,
+                           trainable=True))
+model.add(layers.GlobalMaxPool1D())
+model.add(layers.Dense(10, activation='relu'))
+model.add(layers.Dense(1, activation='sigmoid'))
+model.compile(optimizer='adam',
+             loss='binary_crossentropy',
+             metrics=['accuracy'])
+model.build(input_shape=(None, max_len))
+model.summary()
+# model fit and evaluation
+history = model.fit(X_train, y_train,
+                    epochs=50,
+                    verbose=False,
+                    validation_data=(X_test, y_test),
+                    batch_size=10)
+loss, accuracy = model.evaluate(X_train, y_train, verbose=False)
+print("Training Accuracy: {:.4f}".format(accuracy))
+loss, accuracy = model.evaluate(X_test, y_test, verbose=False)
+print("Testing Accuracy:  {:.4f}".format(accuracy))
+plot_history(history)
+# more effective
+
+
+
+
+
+# Convolutional Neural Networks (CNN)
