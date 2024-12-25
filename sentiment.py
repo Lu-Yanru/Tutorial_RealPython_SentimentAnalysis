@@ -89,7 +89,7 @@ sentences_train, sentences_test, y_train, y_test = train_test_split(
     sentences, y, test_size=0.25, random_state=1000)
 
 # vectorize sentences
-verctorizer = CountVectorizer()
+vectorizer = CountVectorizer()
 vectorizer.fit(sentences_train)
 X_train = vectorizer.transform(sentences_train)
 X_test = vectorizer.transform(sentences_test)
@@ -103,7 +103,7 @@ classifier = LogisticRegression()
 classifier.fit(X_train, y_train)
 score = classifier.score(X_test, y_test)
 print("Accuracy:", score)
-# Accuracy: 0.776
+# Accuracy: 0.796
 
 # try on all datasets
 # loop through the datasets based on their sources
@@ -126,10 +126,9 @@ for source in df['source'].unique():
     # {} to insert the 1st variable (source)
     # {:.4f} to insert the 2nd variable (score) until the 4th decimal 
     print("Accuracy for {} data: {:.4f}".format(source, score))
-# Accuracy for yelp data: 0.7760
-# Accuracy for amazon data: 0.7920
-# Accuracy for imdb data: 0.7326
-
+# Accuracy for yelp data: 0.7960
+# Accuracy for amazon data: 0.7960
+# Accuracy for imdb data: 0.7487
 
 
 
@@ -153,7 +152,7 @@ for source in df['source'].unique():
 
 # build a keras sequential model
 # a linear stack of layers
-input_dim = X_train.shape[1] # Number of features 2720
+input_dim = X_train.shape[1] # Number of features 2505
 
 model = Sequential()
 # using tensorflow backend
@@ -346,9 +345,11 @@ history = model.fit(X_train, y_train,
                     validation_data=(X_test, y_test),
                     batch_size=10)
 loss, accuracy = model.evaluate(X_train, y_train, verbose=False)
-print("Training Accuracy: {:.4f}".format(accuracy))
+print("Testing Accuracy: {:.4f}".format(accuracy))
+# Training Accuracy: 1.0000
 loss, accuracy = model.evaluate(X_test, y_test, verbose=False)
 print("Training Accuracy {:.4f}".format(accuracy))
+# Training Accuracy 0.6417
 plot_history(history)
 # not a good way to work with sequential data
 # for sequential data, focus on methods that look at local and sequential info instead of absolute positional info
@@ -378,8 +379,10 @@ history = model.fit(X_train, y_train,
                     batch_size=10)
 loss, accuracy = model.evaluate(X_train, y_train, verbose=False)
 print("Training Accuracy: {:.4f}".format(accuracy))
+# Training Accuracy: 1.0000
 loss, accuracy = model.evaluate(X_test, y_test, verbose=False)
 print("Testing Accuracy:  {:.4f}".format(accuracy))
+# Testing Accuracy:  0.7487
 plot_history(history)
 # improves the model
 
@@ -436,10 +439,10 @@ history = model.fit(X_train, y_train,
                     batch_size=10)
 loss, accuracy = model.evaluate(X_train, y_train, verbose=False)
 print("Training Accuracy: {:.4f}".format(accuracy))
-# Training Accuracy: 0.5276
+# Training Accuracy: 0.7914
 loss, accuracy = model.evaluate(X_test, y_test, verbose=False)
 print("Testing Accuracy:  {:.4f}".format(accuracy))
-#Testing Accuracy:  0.4920
+#Testing Accuracy:  0.7380
 plot_history(history)
 
 # if we allow the embedding to be trained additionally
@@ -465,8 +468,10 @@ history = model.fit(X_train, y_train,
                     batch_size=10)
 loss, accuracy = model.evaluate(X_train, y_train, verbose=False)
 print("Training Accuracy: {:.4f}".format(accuracy))
+# Training Accuracy: 1.0000
 loss, accuracy = model.evaluate(X_test, y_test, verbose=False)
 print("Testing Accuracy:  {:.4f}".format(accuracy))
+# Testing Accuracy:  0.7861
 plot_history(history)
 # more effective
 
