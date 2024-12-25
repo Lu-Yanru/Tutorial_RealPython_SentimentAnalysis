@@ -30,7 +30,7 @@ import numpy as np # for creating embedding matrix that only contain words in ou
 # data: sentences + sentiment label (1 positive, 0 negative)
 
 
-# set up a dictionary of source and filepath with key:value pairs 
+# set up a dictionary of source and filepath with key:value pairs
 path = '~/Desktop/DataAnalysis/NLP/Tutorial_RealPython_SentimentAnalysis/data/'
 filepath_dict = {
     'yelp': path+'yelp_labelled.txt',
@@ -41,17 +41,17 @@ filepath_dict = {
 df_list = []
 # for each source:filepath pair in the dict
 for source, filepath in filepath_dict.items():
-    # read the file specified by the path, the first part is called sentence, 
+    # read the file specified by the path, the first part is called sentence,
     # the second part is called label, they are separated by a tab
     df = pd.read_csv(filepath, names=['sentence', 'label'], sep='\t')
     # add another column filled with the source name
-    df['source'] = source 
+    df['source'] = source
     # append this data frame to the data frame list
     df_list.append(df)
 
 #print(df)
 #print(df_list)
-# concatenate pandas objects        
+# concatenate pandas objects
 df = pd.concat(df_list)
 print(df.iloc[0]) # print the 1st object in the df list just to check
 
@@ -71,15 +71,15 @@ vectorizer.transform(sentence).toarray()
 
 # defining a baseline model to compare to the neural network model
 
-# split the data into training and testing set 
+# split the data into training and testing set
 # use the yelp data
 df_yelp = df[df['source'] == 'yelp']
 # create a Numpy array of sentences
 sentences = df_yelp['sentence'].values
 # create a Numpy array of labels
 y = df_yelp['label'].values
-# arguments: arrays = input data, output data (lists/Numpy arrays/pandas Dataframes, need to be of the same length), 
-# test_size=25% of the dataset, 
+# arguments: arrays = input data, output data (lists/Numpy arrays/pandas Dataframes, need to be of the same length),
+# test_size=25% of the dataset,
 # random_state=the obj that controls randomization during splitting, so that every time the randomized splitting is the same
 # shuffle = default True, shuffle the dataset before splitting
 # stratify = if not None, determines how to use a stratified split, e.g. stratify=y keeps the proportion of y values through the training and test sets, useful when using an imbalanced dataset
@@ -124,7 +124,7 @@ for source in df['source'].unique():
     score = classifier.score(X_test, y_test)
     # print out the accuracy for the dataset
     # {} to insert the 1st variable (source)
-    # {:.4f} to insert the 2nd variable (score) until the 4th decimal 
+    # {:.4f} to insert the 2nd variable (score) until the 4th decimal
     print("Accuracy for {} data: {:.4f}".format(source, score))
 # Accuracy for yelp data: 0.7960
 # Accuracy for amazon data: 0.7960
@@ -140,9 +140,9 @@ for source in df['source'].unique():
 # b: bias
 # o: output nodes
 # f: activation funtion
-# "It is generally common to use 
-# a rectified linear unit (ReLU) for hidden layers, 
-# a sigmoid function for the output layer in a binary classification problem, 
+# "It is generally common to use
+# a rectified linear unit (ReLU) for hidden layers,
+# a sigmoid function for the output layer in a binary classification problem,
 # or a softmax function for the output layer of multi-class classification problems."
 
 # calculate weight -> backpropagation
@@ -157,8 +157,8 @@ input_dim = X_train.shape[1] # Number of features 2505
 model = Sequential()
 # using tensorflow backend
 # add a dense layer (hidden layer) to the model,
-# which has 10 neurons, 
-# num of features equal to the length of X_train, 
+# which has 10 neurons,
+# num of features equal to the length of X_train,
 # and relu as the activation funtion
 model.add(layers.Dense(10, input_dim=input_dim, activation='relu'))
 # add another dense layer (output layer) to the model,
@@ -213,7 +213,7 @@ def plot_history(history):
     loss = history.history['loss']
     val_loss = history.history['val_loss']
     x = range(1, len(acc) +1)
-    
+
     plt.figure(figsize = (12,5))
     plt.subplot(1,2,1)
     plt.plot(x, acc, 'b', label='Training acc')
@@ -225,7 +225,7 @@ def plot_history(history):
     plt.plot(x, val_loss, 'r', label='Validation loss')
     plt.title('Training and validation loss')
     plt.legend()
-    
+
 plot_history(history)
 # sign of overfitting: accuracy reached 100%, the loss of the validation starts rising again
 # usu separate testing and validation sets
@@ -240,7 +240,7 @@ plot_history(history)
 # for each word a vector with zeros everywhere except for the spot for the word in the vocabulary, which is set to 1
 # vector can be large for each word
 # does not give any additional info like the relationship btw words
-# usu used for categories/categorical features 
+# usu used for categories/categorical features
 # which you cannot represent as a numeric value but still want to use it in ML
 cities = ['London', 'Berlin', 'Berlin', 'New York', 'London']
 # encode the list of cities into categorical interger values with LabelEncoder from scikit-learn
@@ -360,8 +360,8 @@ plot_history(history)
 # average pooling: take average
 # global max/average pooling:  takes the max/avg of all features
 model = Sequential()
-model.add(layers.Embedding(input_dim=vocab_size, 
-                           output_dim=embedding_dim, 
+model.add(layers.Embedding(input_dim=vocab_size,
+                           output_dim=embedding_dim,
                            input_length=max_len))
 model.add(layers.GlobalMaxPool1D())
 model.add(layers.Dense(10, activation='relu'))
@@ -397,7 +397,7 @@ plot_history(history)
 def create_embedding_matrix(filepath, word_index, embedding_dim):
     vocab_size = len(word_index) + 1 # Add 1 because reserve 0 index
     embedding_matrix = np.zeros((vocab_size, embedding_dim))
-    
+
     with open(filepath) as f:
         for line in f:
             word, *vector = line.split()
@@ -405,7 +405,7 @@ def create_embedding_matrix(filepath, word_index, embedding_dim):
                 idx = word_index[word]
                 embedding_matrix[idx] = np.array(
                     vector, dtype=np.float32)[:embedding_dim]
-                
+
     return embedding_matrix
 # retrieve the embedding matrix
 embedding_matrix = create_embedding_matrix(
