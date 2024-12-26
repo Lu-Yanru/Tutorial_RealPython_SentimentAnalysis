@@ -23,8 +23,26 @@ from sklearn.preprocessing import LabelEncoder # encode words into categorical i
 from sklearn.preprocessing import OneHotEncoder # encode categorical values into one-hot encoded numeric array
 
 from keras.layers import TextVectorization # tokenize the text into a format that can be used by the word embeddings
+# https://keras.io/api/layers/preprocessing_layers/text/text_vectorization/
 
 import numpy as np # for creating embedding matrix that only contain words in our vocab
+
+# for random search hyperparameters optimization
+# keras.wrappers depricated
+# from scikeras.wrappers import KerasClassifier
+# Migrating from keras.wrappers.scikit_learn
+# https://adriangb.com/scikeras/stable/migration.html
+# from sklearn.model_selection import RandomizedSearchCV
+# I cannot find how to install scikeras on anaconda, thus use KerasTuner instead
+import keras_tuner
+# tutorial:
+# https://keras.io/keras_tuner/getting_started/
+# documentation:
+# https://keras.io/keras_tuner/api/
+
+
+
+
 
 # Load data set with Pandas
 # data: sentences + sentiment label (1 positive, 0 negative)
@@ -409,7 +427,7 @@ def create_embedding_matrix(filepath, word_index, embedding_dim):
     return embedding_matrix
 # retrieve the embedding matrix
 embedding_matrix = create_embedding_matrix(
-    'data/glove.6B/glove.6B.50d.txt',
+    '~/Desktop/DataAnalysis/NLP/glove.6B/glove.6B.50d.txt',
     word_index, embedding_dim)
 # calculate how many embeddings are non-zero
 nonzero_elements = np.count_nonzero(np.count_nonzero(embedding_matrix, axis=1))
@@ -479,4 +497,114 @@ plot_history(history)
 
 
 
-# Convolutional Neural Networks (CNN)
+# Convolutional Neural Networks (CNN/convnets)
+# specialized neural network that can detect specific patterns
+# can extract features from images and use them in neural networks
+# can be used for both image processing and sequence processing
+# has hidden layers = convolutional layers consisting of multiple filters which are slid across one image and can detect specific features (edges, corners, textures etc.)
+# math: convolution: take a patch of input features with the size of the filter kernel. With this patch, take the dot product of the multiplied weight of the filter.
+# more convolutional layers can detect more complex patterns
+# image: 2d matrix of numbers
+# sequential data e.g. text: 1d convolution
+embedding_dim = 100
+model = Sequential()
+model.add(layers.Embedding(
+    vocab_size,
+    embedding_dim,
+    input_length=max_len
+    ))
+# add convolutional layer btw embedding layer and global max pool layer
+# with 128 filters, a kernal size of 5 and the activation function of relu
+model.add(layers.Conv1D(128, 5, activation='relu'))
+model.add(layers.GlobalMaxPool1D())
+model.add(layers.Dense(10, activation='relu'))
+model.add(layers.Dense(1, activation='sigmoid'))
+model.compile(optimizer='adam',
+              loss='binary_crossentropy',
+              metrics=['accuracy'])
+model.build(input_shape=(None, max_len))
+model.summary()
+history = model.fit(X_train, y_train,
+                    epochs=10,
+                    verbose=False,
+                    validation_data=(X_test, y_test),
+                    batch_size=10)
+loss, accuracy = model.evaluate(X_train, y_train, verbose=False)
+print("Training Accuracy: {:.4f}".format(accuracy))
+# Training Accuracy: 1.0000
+loss, accuracy = model.evaluate(X_test, y_test, verbose=False)
+print("Testing Accuracy:  {:.4f}".format(accuracy))
+# Testing Accuracy:  0.7540
+plot_history(history)
+# plateau at 80% might because:
+# there are not enough training samples
+# the data you have does not generalize well
+# missing focus on tweaking the hyperparameters
+# CNN work best with large training sets
+
+
+
+
+
+
+# hyperparameters optimization
+# parameters to adjust the models
+# one populer method: grid seearch (most thorough but computationallz heavy)
+# take lists of parameters,
+# run the model with each parameter combination
+# another common method: random search (here)
+# take random combination of parameters
+
+# cross-validation: a way to validate the model, take the whole data and separate it intp muiltiple testing and training data sets
+# type1: k-fold
+# the data set is partitioned into k equal sized sets， 1 for testing, the rest for training
+# run k different runs, where each partition is once used as a testing set
+# the hight k, the more accurate the model evaluation is, but the smaller each testing set
+
+# a function that creates a keras model
+# allow various parameters to be set
+#def create_model(num_filters, kernel_size, vocab_size, embedding_dim, maxlen):
+#    model = Sequential()
+#    model.add(layers.Embedding(vocab_size, embedding_dim, input_length=maxlen))
+#    model.add(layers.Conv1D(num_filters, kernel_size, activation='relu'))
+#    model.add(layers.GlobalMaxPooling1D())
+#    model.add(layers.Dense(10, activation='relu'))
+#    model.add(layers.Dense(1, activation='sigmoid'))
+#    model.compile(optimizer='adam',
+#                  loss='binary_crossentropy',
+#                  metrics=['accuracy'])
+#    model.build(input_shape=(None, maxlen))
+#    return model
+
+# define the parameter grid that zou want to use in training
+# a dictionary with each parameters
+#param_grid = dict(num_filters=[32,64,128],
+#                  kernel_size=[3,5,7],
+#                  vocab_size=[5000],
+#                  embedding_dim=[50],
+#                  maxlen=[100])
+
+
+
+# define a keras model with hyperparameters to be tuned
+#def create_model(num_filters, kernel_size, vocab_size, embedding_dim, maxlen):
+#    model = Sequential()
+#    model.add(layers.Embedding(vocab_size, embedding_dim, input_length=maxlen))
+#    model.add(layers.Conv1D(num_filters, kernel_size, activation='relu'))
+#    model.add(layers.GlobalMaxPooling1D())
+#    model.add(layers.Dense(10, activation='relu'))
+#    model.add(layers.Dense(1, activation='sigmoid'))
+#    model.compile(optimizer='adam',
+#                  loss='binary_crossentropy',
+#                  metrics=['accuracy'])
+#    return model
+
+#def build_model(hp):
+#    model = create_model(
+#        
+#        )
+#    return model
+
+
+# run the random search
+# 
