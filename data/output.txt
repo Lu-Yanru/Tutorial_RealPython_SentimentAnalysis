@@ -1,0 +1,12 @@
+Running amazon data set
+{'num_filters': 96, 'kernel_size': 3}
+Score: 0.8428
+
+Running imdb data set
+{'num_filters': 32, 'kernel_size': 3}
+Score: 0.8443
+
+Running yelp data set
+{'num_filters': 96, 'kernel_size': 3}
+Score: 0.8413
+

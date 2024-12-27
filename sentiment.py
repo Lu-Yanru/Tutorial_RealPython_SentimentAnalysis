@@ -585,26 +585,130 @@ plot_history(history)
 #                  maxlen=[100])
 
 
+# Main settings
+epochs = 20
+embedding_dim = 50
+maxlen = 100
+output_file = 'data/output.txt'
 
 # define a keras model with hyperparameters to be tuned
-#def create_model(num_filters, kernel_size, vocab_size, embedding_dim, maxlen):
-#    model = Sequential()
-#    model.add(layers.Embedding(vocab_size, embedding_dim, input_length=maxlen))
-#    model.add(layers.Conv1D(num_filters, kernel_size, activation='relu'))
-#    model.add(layers.GlobalMaxPooling1D())
-#    model.add(layers.Dense(10, activation='relu'))
-#    model.add(layers.Dense(1, activation='sigmoid'))
-#    model.compile(optimizer='adam',
-#                  loss='binary_crossentropy',
-#                  metrics=['accuracy'])
-#    return model
+def create_model(num_filters, kernel_size):
+    model = Sequential()
+    model.add(layers.Embedding(vocab_size, embedding_dim, input_length=maxlen))
+    model.add(layers.Conv1D(num_filters, kernel_size, activation='relu'))
+    model.add(layers.GlobalMaxPooling1D())
+    model.add(layers.Dense(10, activation='relu'))
+    model.add(layers.Dense(1, activation='sigmoid'))
+    model.compile(optimizer='adam',
+                  loss='binary_crossentropy',
+                  metrics=['accuracy'])
+    return model
 
-#def build_model(hp):
-#    model = create_model(
-#        
-#        )
-#    return model
+# define the search space
+def build_model(hp):
+    num_filters=hp.Int("num_filters", min_value=32, max_value=128, step=32) # choose number of filter as an interger from 32 o 128 with a step pf 32
+    kernel_size=hp.Int("kernel_size", min_value=3, max_value=7, step=2)
+    model = create_model(
+        num_filters=num_filters,
+        kernel_size=kernel_size,
+        )
+    return model
 
+build_model(keras_tuner.HyperParameters())
 
 # run the random search
-# 
+tuner = keras_tuner.RandomSearch(
+    hypermodel=build_model, # the model building function
+    objective="val_accuracy", # the name of the objective to optimize
+    max_trials=3, # the total number of trials (diff hps) to run during the search
+    executions_per_trial=1, # the number of models that should be built and fit for each trial (same hps), reduce variance
+    overwrite=True, # whether to overwrite the previous result in the same directory or resume the previous search instead
+    directory="data", # a path to a directory for storing the search results
+    project_name="output" # the name of the subdirectory in the "directory"
+    )
+tuner.search_space_summary() 
+tuner.search(X_train, y_train, epochs=epochs, validation_data=(X_test, y_test))
+# retrieve the best models
+models = tuner.get_best_models(num_models=2)
+best_model = models[0]
+best_model.summary()
+tuner.results_summary()
+
+ 
+    
+# loop through the whole data set
+for source, frame in df.groupby('source'):
+    print('Running random search for data set:', source)
+    sentences = df['sentence'].values
+    y = df['label'].values
+    
+    # train-test split
+    sentences_train, sentences_test, y_train, y_test = train_test_split(sentences, y, test_size=0.25, random_state=1000)
+    
+    # tokenize words
+    tokenizer = TextVectorization(
+        max_tokens=5000,
+        standardize="lower_and_strip_punctuation",
+        split="whitespace",
+        output_mode='int',
+        output_sequence_length=max_len)
+    tokenizer.adapt(sentences_train)
+    X_train = tokenizer(sentences_train)
+    X_test = tokenizer(sentences_test)
+    
+    voc = tokenizer.get_vocabulary()
+    vocab_size = len(voc) +1
+
+    # define a keras model with hyperparameters to be tuned
+    def create_model(num_filters, kernel_size):
+        model = Sequential()
+        model.add(layers.Embedding(vocab_size, embedding_dim, input_length=maxlen))
+        model.add(layers.Conv1D(num_filters, kernel_size, activation='relu'))
+        model.add(layers.GlobalMaxPooling1D())
+        model.add(layers.Dense(10, activation='relu'))
+        model.add(layers.Dense(1, activation='sigmoid'))
+        model.compile(optimizer='adam',
+                      loss='binary_crossentropy',
+                      metrics=['accuracy'])
+        return model
+
+    # define the search space
+    def build_model(hp):
+        num_filters=hp.Int("num_filters", min_value=32, max_value=128, step=32) # choose number of filter as an interger from 32 o 128 with a step pf 32
+        kernel_size=hp.Int("kernel_size", min_value=3, max_value=7, step=2)
+        model = create_model(
+            num_filters=num_filters,
+            kernel_size=kernel_size,
+            )
+        return model
+
+    # run the random search
+    tuner = keras_tuner.RandomSearch(
+        hypermodel=build_model,
+        objective="val_accuracy",
+        max_trials=3,
+        executions_per_trial=1,
+        overwrite=True,
+        directory="data",
+        project_name="output"
+        )
+    tuner.search(X_train, y_train, epochs=epochs, validation_data=(X_test, y_test))
+    
+    # retrieve the best result and save it
+    with open(output_file, 'a') as f:
+        trial = tuner.oracle.get_best_trials(num_trials=1)
+        best_hp = tuner.get_best_hyperparameters()[0]
+        s = ('Running {} data set\n{}\nScore: {:.4f}\n\n')
+        output_string = s.format(
+            source,
+            best_hp.values,
+            trial[0].score
+            )
+        print(output_string)
+        f.write(output_string)       
+
+# method has a bias towards the data set -> can leead to overly optimistic score
+# best hyperparameters for the specific training set but not necessarily generalize the best
+
+# type2 cross-validation method: nested cross-validation
+# used when the hyperparameters also need to be optimized
